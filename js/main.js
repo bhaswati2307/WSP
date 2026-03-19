@@ -181,11 +181,6 @@ function createVideoElement(video) {
                     </div>
                 </div>
             </div>
-            <div class="portfolio-info">
-                <h3 class="portfolio-title">${video.title}</h3>
-                <p class="portfolio-artist">${video.artist}</p>
-                <span class="portfolio-category">${video.category === 'production' ? 'Music Production' : 'Mixing'}</span>
-            </div>
         </div>
     `;
 }
