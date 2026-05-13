@@ -209,29 +209,34 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (videoId && !videoId.startsWith('YOUR_VIDEO_ID')) {
                     // Create iframe
                     const iframe = document.createElement('iframe');
-                    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`;
+                    // Improved embedding URL with privacy and performance parameters
+                    iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`;
                     iframe.frameBorder = '0';
                     iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
                     iframe.allowFullscreen = true;
                     
                     // IMPORTANT: Set inline styles to ensure proper sizing
-                    iframe.style.position = 'absolute';
-                    iframe.style.top = '0';
-                    iframe.style.left = '0';
-                    iframe.style.width = '100%';
-                    iframe.style.height = '100%';
-                    iframe.style.border = 'none';
+                    Object.assign(iframe.style, {
+                        position: 'absolute',
+                        top: '0',
+                        left: '0',
+                        width: '100%',
+                        height: '100%',
+                        border: 'none'
+                    });
                     
                     // Clear wrapper content and add iframe
                     videoWrapper.innerHTML = '';
                     videoWrapper.appendChild(iframe);
                     
                     // Also ensure the wrapper maintains its styling
-                    videoWrapper.style.position = 'relative';
-                    videoWrapper.style.width = '100%';
-                    videoWrapper.style.paddingBottom = '56.25%';
-                    videoWrapper.style.height = '0';
-                    videoWrapper.style.overflow = 'hidden';
+                    Object.assign(videoWrapper.style, {
+                        position: 'relative',
+                        width: '100%',
+                        paddingBottom: '56.25%',
+                        height: '0',
+                        overflow: 'hidden'
+                    });
                 }
             }
         });
@@ -292,28 +297,100 @@ setInterval(() => {
 const contactForm = document.getElementById('contactForm');
 const formMessage = document.getElementById('formMessage');
 
+function buildConsultationMessage(data) {
+    const selectedService = data.service
+        ? data.service.charAt(0).toUpperCase() + data.service.slice(1)
+        : 'General Consultation';
+
+    return [
+        'Hello Wide Spectrum Productions,',
+        '',
+        'I would like to book a free consultation.',
+        `Name: ${data.name}`,
+        `Email: ${data.email}`,
+        `Phone: ${data.phone || 'Not provided'}`,
+        `Service Interested In: ${selectedService}`,
+        `Project Details: ${data.message}`,
+        '',
+        'Please get back to me when convenient.'
+    ].join('\n');
+}
+
+function openDeepLink(url, target = '_self') {
+    const link = document.createElement('a');
+    link.href = url;
+    link.target = target;
+    if (target === '_blank') {
+        link.rel = 'noopener noreferrer';
+    }
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function openConsultationChannels(data) {
+    if (!contactForm) {
+        return;
+    }
+
+    const contactEmail = contactForm.dataset.contactEmail || 'b@gmail.com';
+    const contactPhone = contactForm.dataset.contactPhone || '+919819025889';
+    const whatsappNumber = contactForm.dataset.contactWhatsapp || '919819025889';
+    const selectedService = data.service
+        ? data.service.charAt(0).toUpperCase() + data.service.slice(1)
+        : 'Consultation';
+    const subject = encodeURIComponent(`New ${selectedService} consultation request from ${data.name}`);
+    const message = buildConsultationMessage(data);
+    const encodedMessage = encodeURIComponent(message);
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const smsSeparator = isIOS ? '&' : '?';
+
+    //openDeepLink(`mailto:${contactEmail}?subject=${subject}&body=${encodedMessage}`, '_self');
+
+    setTimeout(() => {
+        openDeepLink(`https://wa.me/${whatsappNumber}?text=${encodedMessage}`, '_blank');
+    }, 300);
+
+    //setTimeout(() => {
+   //     openDeepLink(`sms:${contactPhone}${smsSeparator}body=${encodedMessage}`, '_self');
+   // }, 600);
+}
+
 if (contactForm) {
-    contactForm.addEventListener('submit', async (e) => {
+    contactForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const submitButton = contactForm.querySelector('.btn-submit');
         const formData = new FormData(contactForm);
         const data = Object.fromEntries(formData.entries());
-        
+
         submitButton.classList.add('loading');
         submitButton.disabled = true;
-        
+
+        if (formMessage) {
+            formMessage.style.display = 'none';
+        }
+
         setTimeout(() => {
+            openConsultationChannels(data);
             submitButton.classList.remove('loading');
             submitButton.disabled = false;
-            formMessage.textContent = 'Thank you for your message! We\'ll get back to you within 24 hours.';
-            formMessage.className = 'form-message success';
-            formMessage.style.display = 'block';
+
+            if (formMessage) {
+                formMessage.innerHTML = `Your message is ready in Email, SMS, and WhatsApp for <strong>${contactForm.dataset.contactEmail || 'b@gmail.com'}</strong> / <strong>${contactForm.dataset.contactPhone || '+919819025889'}</strong>. If one of the apps does not open automatically, please allow pop-ups or contact directly using the details above.`;
+                formMessage.className = 'form-message success';
+                formMessage.style.display = 'block';
+            }
+
             contactForm.reset();
             setTimeout(() => {
-                formMessage.style.display = 'none';
-            }, 5000);
-            console.log('Contact form submitted:', data);
-        }, 2000);
+                if (formMessage) {
+                    formMessage.style.display = 'none';
+                }
+            }, 8000);
+
+            console.log('Contact form prepared for email, SMS, and WhatsApp:', data);
+        }, 700);
     });
 }
 
@@ -516,16 +593,12 @@ emailInputs.forEach(input => {
 const phoneInputs = document.querySelectorAll('input[type="tel"]');
 phoneInputs.forEach(input => {
     input.addEventListener('input', (e) => {
-        let value = e.target.value.replace(/\D/g, '');
-        if (value.length > 0) {
-            if (value.length <= 3) {
-                value = `(${value}`;
-            } else if (value.length <= 6) {
-                value = `(${value.slice(0, 3)}) ${value.slice(3)}`;
-            } else {
-                value = `(${value.slice(0, 3)}) ${value.slice(3, 6)}-${value.slice(6, 10)}`;
-            }
+        let value = e.target.value.replace(/[^\d+\s()-]/g, '');
+
+        if (value.includes('+')) {
+            value = value.replace(/(?!^)\+/g, '');
         }
+
         e.target.value = value;
     });
 });
